@@ -1,0 +1,588 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asset Tracking Register</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Arial,sans-serif;
+}
+
+body{
+background:linear-gradient(135deg,#2563eb,#1e40af);
+min-height:100vh;
+padding:20px;
+}
+
+.login-container{
+background:white;
+padding:40px;
+width:350px;
+border-radius:15px;
+box-shadow:0 10px 25px rgba(0,0,0,0.2);
+position:absolute;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+text-align:center;
+}
+
+.dashboard{
+display:none;
+}
+
+.header{
+background:white;
+padding:20px;
+border-radius:10px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.card{
+background:white;
+padding:20px;
+border-radius:10px;
+margin-top:20px;
+box-shadow:0 2px 10px rgba(0,0,0,0.1);
+}
+
+input,select{
+width:100%;
+padding:10px;
+margin:8px 0;
+border:1px solid #ccc;
+border-radius:8px;
+}
+
+button{
+padding:10px;
+border:none;
+border-radius:8px;
+cursor:pointer;
+margin:3px;
+}
+
+.login-btn{
+width:100%;
+background:#2563eb;
+color:white;
+}
+
+.add-btn{
+background:green;
+color:white;
+width:100%;
+}
+
+.edit-btn{
+background:orange;
+color:white;
+}
+
+.delete-btn{
+background:red;
+color:white;
+}
+
+.logout{
+background:red;
+color:white;
+}
+
+.export-btn{
+background:#0f766e;
+color:white;
+margin-top:10px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:15px;
+}
+
+table,th,td{
+border:1px solid #ddd;
+}
+
+th{
+background:#2563eb;
+color:white;
+padding:10px;
+}
+
+td{
+padding:10px;
+text-align:center;
+}
+
+.counter{
+font-size:18px;
+font-weight:bold;
+color:#2563eb;
+margin-top:10px;
+}
+
+canvas{
+margin-top:20px;
+max-height:400px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- Login Page -->
+<div id="loginPage" class="login-container">
+
+<h2>📦 Asset Tracking Register</h2>
+
+<br>
+
+<input type="text" id="username" placeholder="Username">
+
+<input type="password" id="password" placeholder="Password">
+
+<button class="login-btn" onclick="login()">
+Login
+</button>
+
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard" class="dashboard">
+
+<div class="header">
+<h2>Asset Tracking Dashboard</h2>
+
+<button class="logout" onclick="logout()">
+Logout
+</button>
+</div>
+
+<div class="card">
+
+<h3>Add / Update Asset</h3>
+
+<input type="text" id="assetId" placeholder="Asset ID">
+
+<input type="text" id="assetName" placeholder="Asset Name">
+
+<select id="assetType">
+<option>Laptop</option>
+<option>Mouse</option>
+<option>Keyboard</option>
+<option>Monitor</option>
+<option>Mobile</option>
+</select>
+
+<input type="text"
+id="employee"
+placeholder="Assigned Employee">
+
+<button id="saveBtn"
+class="add-btn"
+onclick="addAsset()">
+Add Asset
+</button>
+
+<div class="counter">
+Total Assets :
+<span id="assetCount">0</span>
+</div>
+
+<button class="export-btn"
+onclick="exportCSV()">
+Export To Excel
+</button>
+
+<input
+type="text"
+id="searchInput"
+placeholder="Search Asset Name..."
+onkeyup="searchAsset()">
+
+<table id="assetTable">
+
+<thead>
+<tr>
+<th>ID</th>
+<th>Name</th>
+<th>Type</th>
+<th>Employee</th>
+<th>Action</th>
+</tr>
+</thead>
+
+<tbody></tbody>
+
+</table>
+
+</div>
+
+<!-- Bar Chart -->
+<div class="card">
+
+<h3>Asset Analysis (Bar Chart)</h3>
+
+<canvas id="barChart"></canvas>
+
+</div>
+
+</div>
+
+<script>
+
+let editRow = null;
+let barChart = null;
+
+function login(){
+
+let user =
+document.getElementById("username").value;
+
+let pass =
+document.getElementById("password").value;
+
+if(user !== "" && pass !== ""){
+
+document.getElementById("loginPage")
+.style.display="none";
+
+document.getElementById("dashboard")
+.style.display="block";
+
+loadAssets();
+
+}else{
+
+alert("Enter Username & Password");
+
+}
+
+}
+
+function logout(){
+
+document.getElementById("dashboard")
+.style.display="none";
+
+document.getElementById("loginPage")
+.style.display="block";
+
+}
+
+function addAsset(){
+
+let id =
+document.getElementById("assetId").value;
+
+let name =
+document.getElementById("assetName").value;
+
+let type =
+document.getElementById("assetType").value;
+
+let employee =
+document.getElementById("employee").value;
+
+if(id==="" || name===""){
+
+alert("Please fill required fields");
+return;
+
+}
+
+if(editRow==null){
+
+let table =
+document.querySelector("#assetTable tbody");
+
+let row = table.insertRow();
+
+row.innerHTML = `
+<td>${id}</td>
+<td>${name}</td>
+<td>${type}</td>
+<td>${employee}</td>
+<td>
+<button class="edit-btn"
+onclick="editAsset(this)">
+Edit
+</button>
+
+<button class="delete-btn"
+onclick="deleteAsset(this)">
+Delete
+</button>
+</td>
+`;
+
+}else{
+
+editRow.cells[0].innerText=id;
+editRow.cells[1].innerText=name;
+editRow.cells[2].innerText=type;
+editRow.cells[3].innerText=employee;
+
+editRow=null;
+
+document.getElementById("saveBtn")
+.innerText="Add Asset";
+
+}
+
+saveAssets();
+clearForm();
+updateCount();
+updateCharts();
+
+}
+
+function editAsset(btn){
+
+editRow = btn.parentNode.parentNode;
+
+document.getElementById("assetId").value =
+editRow.cells[0].innerText;
+
+document.getElementById("assetName").value =
+editRow.cells[1].innerText;
+
+document.getElementById("assetType").value =
+editRow.cells[2].innerText;
+
+document.getElementById("employee").value =
+editRow.cells[3].innerText;
+
+document.getElementById("saveBtn")
+.innerText="Update Asset";
+
+}
+
+function deleteAsset(btn){
+
+if(confirm("Delete Asset?")){
+
+btn.parentNode.parentNode.remove();
+
+saveAssets();
+updateCount();
+updateCharts();
+
+}
+
+}
+
+function clearForm(){
+
+document.getElementById("assetId").value="";
+document.getElementById("assetName").value="";
+document.getElementById("employee").value="";
+
+}
+
+function updateCount(){
+
+let rows =
+document.querySelector("#assetTable tbody")
+.rows.length;
+
+document.getElementById("assetCount")
+.innerText=rows;
+
+}
+
+function searchAsset(){
+
+let input =
+document.getElementById("searchInput")
+.value.toUpperCase();
+
+let rows =
+document.querySelectorAll("#assetTable tbody tr");
+
+rows.forEach(row=>{
+
+let txt =
+row.cells[1].innerText.toUpperCase();
+
+row.style.display =
+txt.indexOf(input)>-1 ? "" : "none";
+
+});
+
+}
+
+function saveAssets(){
+
+let data=[];
+
+document
+.querySelectorAll("#assetTable tbody tr")
+.forEach(row=>{
+
+data.push({
+id:row.cells[0].innerText,
+name:row.cells[1].innerText,
+type:row.cells[2].innerText,
+employee:row.cells[3].innerText
+});
+
+});
+
+localStorage.setItem(
+"assets",
+JSON.stringify(data)
+);
+
+}
+
+function loadAssets(){
+
+let data =
+JSON.parse(localStorage.getItem("assets"))
+|| [];
+
+let table =
+document.querySelector("#assetTable tbody");
+
+table.innerHTML="";
+
+data.forEach(asset=>{
+
+let row=table.insertRow();
+
+row.innerHTML=`
+<td>${asset.id}</td>
+<td>${asset.name}</td>
+<td>${asset.type}</td>
+<td>${asset.employee}</td>
+<td>
+<button class="edit-btn"
+onclick="editAsset(this)">
+Edit
+</button>
+
+<button class="delete-btn"
+onclick="deleteAsset(this)">
+Delete
+</button>
+</td>
+`;
+
+});
+
+updateCount();
+updateCharts();
+
+}
+
+function updateCharts(){
+
+let counts = {
+Laptop:0,
+Mouse:0,
+Keyboard:0,
+Monitor:0,
+Mobile:0
+};
+
+document
+.querySelectorAll("#assetTable tbody tr")
+.forEach(row=>{
+
+let type=row.cells[2].innerText;
+
+counts[type]++;
+
+});
+
+let labels=Object.keys(counts);
+let values=Object.values(counts);
+
+if(barChart){
+barChart.destroy();
+}
+
+barChart = new Chart(
+document.getElementById("barChart"),
+{
+type:"bar",
+
+data:{
+labels:labels,
+
+datasets:[{
+label:"Assets By Type",
+data:values,
+backgroundColor:[
+"#2563eb",
+"#16a34a",
+"#f59e0b",
+"#ef4444",
+"#8b5cf6"
+]
+}]
+},
+
+options:{
+responsive:true,
+scales:{
+y:{
+beginAtZero:true
+}
+}
+}
+}
+);
+
+}
+
+function exportCSV(){
+
+let csv =
+"ID,Name,Type,Employee\n";
+
+document
+.querySelectorAll("#assetTable tbody tr")
+.forEach(row=>{
+
+csv +=
+row.cells[0].innerText + "," +
+row.cells[1].innerText + "," +
+row.cells[2].innerText + "," +
+row.cells[3].innerText + "\n";
+
+});
+
+let blob =
+new Blob([csv],
+{type:"text/csv"});
+
+let a =
+document.createElement("a");
+
+a.href =
+URL.createObjectURL(blob);
+
+a.download =
+"Asset_Report.csv";
+
+a.click();
+
+}
+
+</script>
+
+</body>
+</html>
